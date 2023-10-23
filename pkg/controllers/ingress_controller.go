@@ -46,8 +46,8 @@ type IngressReconciler struct {
 	DefaultDomainZone      string
 }
 
-//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingress,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingress/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingress,verbs=get;list;watch;
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingress/status,verbs=get;
 
 func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	l := log.FromContext(ctx)
