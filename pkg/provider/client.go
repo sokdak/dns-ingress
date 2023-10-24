@@ -2,6 +2,7 @@ package provider
 
 import "context"
 
+//go:generate mockery --name Client --case underscore --inpackage
 type Client interface {
 	GetZone(ctx context.Context, zoneName string) (*Zone, error)
 	GetByName(ctx context.Context, name, zoneId string) (*Domain, error)
