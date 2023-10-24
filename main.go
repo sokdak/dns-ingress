@@ -18,8 +18,13 @@ package main
 
 import (
 	"flag"
+	"github.com/sokdak/dns-ingress/pkg/cloudflare"
 	"github.com/sokdak/dns-ingress/pkg/controllers"
+	"github.com/sokdak/dns-ingress/pkg/environment"
+	"github.com/sokdak/dns-ingress/pkg/provider"
+	"k8s.io/client-go/util/flowcontrol"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -89,9 +94,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	environment.LoadEnvs()
+
+	cfclient, err := cloudflare.GenerateCloudFlareClientUsingEnvironment()
+	if err != nil {
+		setupLog.Error(err, "unable to init cloudflare provider")
+		os.Exit(1)
+	}
+
 	if err = (&controllers.DomainReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Backoff: flowcontrol.NewBackOff(1*time.Second, 30*time.Second),
+		ProviderClientMap: map[string]provider.Client{
+			cloudflare.ProviderKey: cfclient,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Domain")
 		os.Exit(1)

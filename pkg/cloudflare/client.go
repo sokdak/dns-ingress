@@ -5,13 +5,31 @@ import (
 	"fmt"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/sokdak/dns-ingress/pkg/common"
+	"github.com/sokdak/dns-ingress/pkg/environment"
 	"github.com/sokdak/dns-ingress/pkg/provider"
 	"net/http"
 )
 
+const ProviderKey = "cloudflare"
+
 type Client struct {
 	CfClient *cloudflare.API
 	provider.Client
+}
+
+func GenerateCloudFlareClientUsingEnvironment() (*Client, error) {
+	if environment.CloudflareAuthKey == nil || environment.CloudflareAuthEmail == nil {
+		return nil, fmt.Errorf("can't generate cfclient using envs, missing envs")
+	}
+
+	return NewCloudFlareClient(
+		*environment.CloudflareAuthKey, *environment.CloudflareAuthEmail, http.DefaultClient,
+		*environment.CloudflareClientRateLimit,
+		RetryPolicy{
+			MaxRetryCount: 0,
+			MinDelay:      0,
+			MaxDelay:      0,
+		}, *environment.CloudflareClientDebugMode)
 }
 
 func NewCloudFlareClient(key, email string, client *http.Client, rateLimits float64, retryPolicy RetryPolicy, debug bool) (*Client, error) {

@@ -40,7 +40,7 @@ type DomainReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	Backoff           flowcontrol.Backoff
+	Backoff           *flowcontrol.Backoff
 	ProviderClientMap map[string]provider.Client
 }
 
@@ -84,17 +84,17 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			rs, err := service.Get(ctx, domain.Status.Record.Id, domain.Status.Zone.Id)
 			if err != nil {
 				l.Error(err, "Reconciler error")
-				return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "Delete-Get")}, nil
+				return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "Delete-Get")}, nil
 			}
-			ResetBackoff(&r.Backoff, req.NamespacedName, "Delete-Get")
+			ResetBackoff(r.Backoff, req.NamespacedName, "Delete-Get")
 
 			// if recordset exists then try to delete
 			if rs != nil {
 				if err := service.Delete(ctx, domain.Status.Record.Id, domain.Status.Zone.Id); err != nil {
 					l.Error(err, "Reconciler error")
-					return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "Delete")}, nil
+					return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "Delete")}, nil
 				}
-				ResetBackoff(&r.Backoff, req.NamespacedName, "Delete")
+				ResetBackoff(r.Backoff, req.NamespacedName, "Delete")
 			}
 		}
 
@@ -122,9 +122,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			GenerateReconcileInformationLabelKeySetByDomain(domain))
 		if err := teardownRecordSet(ctx, service, domain); err != nil {
 			l.Error(err, "Reconciler error")
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "ProviderChanged-Delete")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "ProviderChanged-Delete")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "ProviderChanged-Delete")
+		ResetBackoff(r.Backoff, req.NamespacedName, "ProviderChanged-Delete")
 
 		if err := domain.StatusUpdate(ctx, r.Client, func(d *v1alpha1.Domain) {
 			conditions.Delete(d, v1alpha1.ConditionTypeProviderChanged)
@@ -134,9 +134,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			d.Status.Record = nil
 		}); err != nil {
 			l.Error(err, "Reconciler error")
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "ProviderChanged-UpdateCR")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "ProviderChanged-UpdateCR")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "ProviderChanged-UpdateCR")
+		ResetBackoff(r.Backoff, req.NamespacedName, "ProviderChanged-UpdateCR")
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -160,9 +160,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			GenerateReconcileInformationLabelKeySetByDomain(domain))
 		if err := teardownRecordSet(ctx, service, domain); err != nil {
 			l.Error(err, "Reconciler error")
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "ZoneChanged-Delete")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "ZoneChanged-Delete")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "ZoneChanged-Delete")
+		ResetBackoff(r.Backoff, req.NamespacedName, "ZoneChanged-Delete")
 
 		if err := domain.StatusUpdate(ctx, r.Client, func(d *v1alpha1.Domain) {
 			conditions.Delete(d, v1alpha1.ConditionTypeZoneChanged)
@@ -172,9 +172,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			d.Status.Record = nil
 		}); err != nil {
 			l.Error(err, "Reconciler error")
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "ZoneChanged-K8sUpdate")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "ZoneChanged-K8sUpdate")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "ZoneChanged-K8sUpdate")
+		ResetBackoff(r.Backoff, req.NamespacedName, "ZoneChanged-K8sUpdate")
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -196,9 +196,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			}); err != nil {
 				l.Error(err, "Reconciler error")
 			}
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "Zone-Get")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "Zone-Get")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "Zone-Get")
+		ResetBackoff(r.Backoff, req.NamespacedName, "Zone-Get")
 
 		// if zone not found, retry after backoff
 		if z == nil {
@@ -209,9 +209,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			}); err != nil {
 				l.Error(err, "Reconciler error")
 			}
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "Zone-K8sUpdate-NotFound")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "Zone-K8sUpdate-NotFound")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "Zone-K8sUpdate-NotFound")
+		ResetBackoff(r.Backoff, req.NamespacedName, "Zone-K8sUpdate-NotFound")
 
 		if err := domain.StatusUpdate(ctx, r.Client, func(d *v1alpha1.Domain) {
 			conditions.MarkTrue(d, v1alpha1.ConditionTypeZoneInfoLoaded)
@@ -222,9 +222,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			}
 		}); err != nil {
 			l.Error(err, "Reconciler error")
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "Zone-K8sUpdate")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "Zone-K8sUpdate")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "Zone-K8sUpdate")
+		ResetBackoff(r.Backoff, req.NamespacedName, "Zone-K8sUpdate")
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -239,9 +239,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			}); err != nil {
 				l.Error(err, "Reconciler error")
 			}
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "Record-Get")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "Record-Get")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "Record-Get")
+		ResetBackoff(r.Backoff, req.NamespacedName, "Record-Get")
 
 		if rs == nil {
 			rs, err = service.Create(ctx, domain.Spec.Name, domain.Status.Zone.Id, domain.Spec.Type, domain.Spec.Records, domain.Spec.TTL)
@@ -254,9 +254,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 				}); err != nil {
 					l.Error(err, "Reconciler error")
 				}
-				return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "Record-Create")}, nil
+				return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "Record-Create")}, nil
 			}
-			ResetBackoff(&r.Backoff, req.NamespacedName, "Record-Create")
+			ResetBackoff(r.Backoff, req.NamespacedName, "Record-Create")
 		}
 
 		// sort strings before put in the status
@@ -275,9 +275,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			d.Status.FQDN = rs.FQDN
 		}); err != nil {
 			l.Error(err, "Reconciler error")
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "Record-K8sUpdate-Create")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "Record-K8sUpdate-Create")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "Record-K8sUpdate-Create")
+		ResetBackoff(r.Backoff, req.NamespacedName, "Record-K8sUpdate-Create")
 	}
 
 	// if status.record.** and spec.** mismatched then try to update the record (update)
@@ -293,9 +293,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			}); err != nil {
 				l.Error(err, "Reconciler error")
 			}
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "Record-Update")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "Record-Update")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "Record-Update")
+		ResetBackoff(r.Backoff, req.NamespacedName, "Record-Update")
 
 		// integrity failed, need to evict the entire record status
 		if rs == nil {
@@ -327,9 +327,9 @@ func (r *DomainReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 			d.Status.FQDN = rs.FQDN
 		}); err != nil {
 			l.Error(err, "Reconciler error")
-			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(&r.Backoff, req.NamespacedName, "Record-K8sUpdate-Update")}, nil
+			return ctrl.Result{RequeueAfter: GetNextBackoffDuration(r.Backoff, req.NamespacedName, "Record-K8sUpdate-Update")}, nil
 		}
-		ResetBackoff(&r.Backoff, req.NamespacedName, "Record-K8sUpdate-Update")
+		ResetBackoff(r.Backoff, req.NamespacedName, "Record-K8sUpdate-Update")
 	}
 
 	// if RecordSetCreated/RecordSetRetrieved/RecordSetUpdated true, remove all conditions and mark Ready true
